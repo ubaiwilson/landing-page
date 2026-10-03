@@ -433,6 +433,16 @@
       background: rgba(243, 235, 222, .94); color: var(--charcoal); display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-sm);
     }
     .dialog-desc { margin-top: 1rem; color: var(--muted); }
+    .map-frame { position: relative; aspect-ratio: 16 / 10; background: var(--blue-soft); overflow: hidden; }
+    .map-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .map-loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+    .dialog.is-map .map-frame { aspect-ratio: auto; height: min(56vh, 460px); }
+    .dialog-map { margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+    .dialog-map .map-frame { margin-top: .9rem; border-radius: 16px; }
+    .map-link { display: inline-flex; align-items: center; gap: .4rem; margin-top: .9rem; font-size: .9rem; font-weight: 500; color: var(--teal); text-decoration: none; }
+    .map-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .link-btn { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+    .link-btn:hover { color: var(--teal); text-decoration: underline; text-underline-offset: 3px; }
     .modal-open { overflow: hidden; }
 
     /* ============ Reveal animation ============ */
@@ -837,7 +847,7 @@
         imagePosition: "center 45%",        // e.g. "center 30%" or "left center"
         imageAspect: "4 / 5",               // photo frame shape on phones: "4 / 3" landscape (default), "4 / 5" or "3 / 4" for tall photos
         imageFit: "cover",                  // "cover" fills the frame; "contain" shows the whole photo (good for tall portrait shots)
-        mapsQuery: "EXSIM Kebun Teh",       // Google Maps search text
+        mapsQuery: "EXSIM Kebun Teh",       // text for the embedded Google Map (a full address pins it more precisely)
         detailsUrl: ""                      // optional link for "View Details"; empty = opens a details panel
       }
       // , { ...copy the block above to add another project... }
@@ -859,6 +869,10 @@
     const waLink = (msg) => `https://wa.me/${waNumber}${has(msg) ? "?text=" + encodeURIComponent(msg) : ""}`;
     const projectMsg = (name) => (CONFIG.messages.project || "").replace(/\{project\}/g, name);
     const mapsLink = (q) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+    const directionsLink = (q) => "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
+    const mapsEmbed = (q) => "https://www.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
+    const mapFrame = (q, title) => `<div class="map-frame"><span class="map-loading">Loading map…</span>
+        <iframe src="${mapsEmbed(q)}" title="Map of ${esc(title)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>`;
     const svgUrl = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
     /* ---------- Text bindings ---------- */
@@ -963,8 +977,13 @@
             ${inDialog ? "" : (has(p.detailsUrl)
               ? `<a class="btn btn-outline" href="${esc(p.detailsUrl)}" target="_blank" rel="noopener">${icon("info")}View Details</a>`
               : `<button class="btn btn-outline" type="button" data-details="${i}">${icon("info")}View Details</button>`)}
-            <a class="btn btn-outline" href="${mapsLink(p.mapsQuery || p.name)}" target="_blank" rel="noopener">${icon("map")}Google Maps</a>
+            ${inDialog ? "" : `<button class="btn btn-outline" type="button" data-map="${i}">${icon("map")}Google Maps</button>`}
           </div>
+          ${inDialog ? `<div class="dialog-map">
+              <p class="project-kicker">Location</p>
+              ${mapFrame(p.mapsQuery || p.name, p.name)}
+              <a class="map-link" href="${directionsLink(p.mapsQuery || p.name)}" target="_blank" rel="noopener">${icon("arrow")}Get directions</a>
+            </div>` : ""}
         </div>`;
     }
     const projects = CONFIG.projects || [];
@@ -975,24 +994,49 @@
 
     /* ---------- Project details dialog ---------- */
     const dlg = $("#projectDialog");
-    const openDialog = (i) => {
-      const p = projects[i];
-      $("#dialogBody").innerHTML = media(p, true) + details(p, i, true);
-      dlg.classList.remove("is-image");
-      if (typeof dlg.showModal === "function") { dlg.showModal(); document.documentElement.classList.add("modal-open"); }
-      else window.open(mapsLink(p.mapsQuery || p.name), "_blank", "noopener");
+    const canModal = typeof dlg.showModal === "function";
+    const showDialog = (html, mode) => {
+      $("#dialogBody").innerHTML = html;
+      $("#dialogBody").scrollTop = 0;
+      dlg.className = "dialog" + (mode ? " is-" + mode : "");
+      dlg.showModal(); document.documentElement.classList.add("modal-open");
     };
+    // Embedded map view (project location or office)
+    const mapView = (title, place, query, waMsg, waLabel) => `${mapFrame(query, title)}
+      <div class="project-body">
+        <p class="project-kicker">Location</p>
+        <h2 id="dialogTitle">${esc(title)}</h2>
+        ${has(place) ? `<p class="project-loc">${icon("pin")}${esc(place)}</p>` : ""}
+        <div class="project-actions">
+          <a class="btn btn-primary" href="${waLink(waMsg)}" target="_blank" rel="noopener">${icon("wa")}${esc(waLabel)}</a>
+          <a class="btn btn-outline" href="${directionsLink(query)}" target="_blank" rel="noopener">${icon("arrow")}Get Directions</a>
+        </div>
+      </div>`;
     document.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-details]");
-      if (b) openDialog(+b.dataset.details);
-      if (e.target.closest("[data-namecard]") && typeof dlg.showModal === "function") {
-        $("#dialogBody").innerHTML = `<img src="${CONFIG.images.namecard}" alt="Name card of ${esc(A.name)}">`;
-        dlg.classList.add("is-image");
-        dlg.showModal(); document.documentElement.classList.add("modal-open");
+      const d = e.target.closest("[data-details]");
+      const m = e.target.closest("[data-map]");
+      const office = e.target.closest("[data-map-office]");
+      const card = e.target.closest("[data-namecard]");
+      if (m) {
+        const p = projects[+m.dataset.map], q = p.mapsQuery || p.name;
+        if (!canModal) return void window.open(mapsLink(q), "_blank", "noopener");
+        showDialog(mapView(p.name, p.location, q, projectMsg(p.name), "WhatsApp Enquiry"), "map");
+      } else if (office) {
+        const q = A.officeAddress || A.location;
+        if (!canModal) return void window.open(mapsLink(q), "_blank", "noopener");
+        showDialog(mapView(A.company + " office", q, q, CONFIG.messages.general, "WhatsApp Me"), "map");
+      } else if (d && canModal) {
+        const i = +d.dataset.details;
+        showDialog(media(projects[i], true) + details(projects[i], i, true));
+      } else if (card && canModal) {
+        showDialog(`<img src="${CONFIG.images.namecard}" alt="Name card of ${esc(A.name)}">`, "image");
       }
     });
     dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
-    dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal-open"); dlg.classList.remove("is-image"); });
+    dlg.addEventListener("close", () => {
+      document.documentElement.classList.remove("modal-open");
+      $("#dialogBody").innerHTML = ""; // unloads the map
+    });
 
     /* ---------- Social + footer ---------- */
     const socials = (CONFIG.social || []).filter((s) => has(s.url));
@@ -1007,7 +1051,7 @@
     $("#footerContact").innerHTML = [
       `<li>${icon("wa")}<a href="${waLink(CONFIG.messages.general)}" target="_blank" rel="noopener">${esc(A.phoneDisplay || "+" + waNumber)}</a></li>`,
       has(A.email) ? `<li>${icon("mail")}<a href="mailto:${esc(A.email)}">${esc(A.email)}</a></li>` : "",
-      has(A.officeAddress || A.location) ? `<li>${icon("pin")}<a href="${mapsLink(A.officeAddress || A.location)}" target="_blank" rel="noopener">${esc(A.officeAddress || A.location)}</a></li>` : ""
+      has(A.officeAddress || A.location) ? `<li>${icon("pin")}<button class="link-btn" type="button" data-map-office>${esc(A.officeAddress || A.location)}</button></li>` : ""
     ].join("");
 
     /* ---------- Name card + "Save Contact" (vCard) ---------- */
