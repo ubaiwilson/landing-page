@@ -25,7 +25,7 @@ python3 tools/embed_images.py --project "EXSIM Kebun Teh=exsim.jpg"
 ```
 
 The portrait is cropped to 4:5 (keeping the face area), logos with transparency are
-flattened onto white, cut-out (transparent) portraits are placed on the page's warm sand tone,
+flattened onto white, cut-out (transparent) portraits are placed on the page's Old Lace base colour,
 and phone rotation is corrected automatically. The name card appears in the contact section
 next to a "Save Contact" button (a vCard built from CONFIG).
 

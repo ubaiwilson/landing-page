@@ -93,8 +93,8 @@ def main():
         print(f"  {label}: {size[0]}x{size[1]} px, {kb:.0f} KB")
 
     if args.portrait:
-        sand = (0xEF, 0xE7, 0xDA)  # cut-out portraits sit on the page's warm sand tone
-        url, size, kb = to_data_url(crop_to_ratio(load(args.portrait, sand), 4 / 5, focus_y=0.3), args.width, args.quality)
+        backdrop = (0xF3, 0xEB, 0xDE)  # cut-out portraits sit on the page's Old Lace base
+        url, size, kb = to_data_url(crop_to_ratio(load(args.portrait, backdrop), 4 / 5, focus_y=0.3), args.width, args.quality)
         html = set_value(html, "portrait", url, images_at)
         report("portrait", size, kb)
     if args.logo:
