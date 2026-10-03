@@ -12,6 +12,7 @@ lives in the `CONFIG` block at the top of the `<script>` near the end of `index.
   (with a comma between blocks) and edit the values.
 - **Photo framing:** `imagePosition` (e.g. `"center 30%"`) picks what stays in view;
   `imageFit: "contain"` shows a tall/portrait photo uncropped over a soft blurred backdrop.
+  `imageAspect: "4 / 5"` gives a tall photo a portrait frame on phones (default `"4 / 3"`).
 
 ## Adding photos
 Images are embedded as base64 JPGs (~1000px wide) so the page is one file:
