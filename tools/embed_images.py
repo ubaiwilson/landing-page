@@ -6,6 +6,7 @@ so the page stays a single self-contained file.
 
 Examples
   python3 tools/embed_images.py --portrait me.jpg --logo iqi-logo.png
+  python3 tools/embed_images.py --namecard card.jpg
   python3 tools/embed_images.py --hero jb-skyline.jpg
   python3 tools/embed_images.py --project "EXSIM Kebun Teh=exsim.jpg"
 
@@ -26,12 +27,12 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def load(path):
+def load(path, background=(255, 255, 255)):
     img = Image.open(path)
     img = ImageOps.exif_transpose(img)  # respect phone camera rotation
     if img.mode in ("RGBA", "LA", "P"):
         img = img.convert("RGBA")
-        bg = Image.new("RGB", img.size, (255, 255, 255))  # logos: flatten transparency onto white
+        bg = Image.new("RGB", img.size, background)  # flatten transparency (cut-out photos, logos)
         bg.paste(img, mask=img.split()[-1])
         return bg
     return img.convert("RGB")
@@ -72,6 +73,7 @@ def main():
     ap.add_argument("--portrait", help="portrait photo (cropped to 4:5)")
     ap.add_argument("--logo", help="company logo")
     ap.add_argument("--hero", help="large hero photo (city or project)")
+    ap.add_argument("--namecard", help="name card image shown in the contact section")
     ap.add_argument("--project", action="append", default=[], metavar='"NAME=photo.jpg"',
                     help="project photo; NAME must match the project's name in CONFIG")
     ap.add_argument("--width", type=int, default=1000, help="output width in px (default 1000)")
@@ -91,7 +93,8 @@ def main():
         print(f"  {label}: {size[0]}x{size[1]} px, {kb:.0f} KB")
 
     if args.portrait:
-        url, size, kb = to_data_url(crop_to_ratio(load(args.portrait), 4 / 5, focus_y=0.3), args.width, args.quality)
+        sand = (0xEF, 0xE7, 0xDA)  # cut-out portraits sit on the page's warm sand tone
+        url, size, kb = to_data_url(crop_to_ratio(load(args.portrait, sand), 4 / 5, focus_y=0.3), args.width, args.quality)
         html = set_value(html, "portrait", url, images_at)
         report("portrait", size, kb)
     if args.logo:
@@ -103,6 +106,10 @@ def main():
         url, size, kb = to_data_url(load(args.hero), args.hero_width or args.width, args.quality)
         html = set_value(html, "hero", url, images_at)
         report("hero", size, kb)
+    if args.namecard:
+        url, size, kb = to_data_url(load(args.namecard), args.width, 85)  # higher quality keeps small text crisp
+        html = set_value(html, "namecard", url, images_at)
+        report("namecard", size, kb)
     for spec in args.project:
         if "=" not in spec:
             sys.exit(f'--project expects "NAME=photo.jpg", got: {spec}')

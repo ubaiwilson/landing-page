@@ -20,11 +20,14 @@ Images are embedded as base64 JPGs (~1000px wide) so the page is one file:
 pip install pillow
 python3 tools/embed_images.py --portrait me.jpg --logo iqi-logo.png
 python3 tools/embed_images.py --hero jb-skyline.jpg
+python3 tools/embed_images.py --namecard card.jpg
 python3 tools/embed_images.py --project "EXSIM Kebun Teh=exsim.jpg"
 ```
 
 The portrait is cropped to 4:5 (keeping the face area), logos with transparency are
-flattened onto white, and phone rotation is corrected automatically.
+flattened onto white, cut-out (transparent) portraits are placed on the page's warm sand tone,
+and phone rotation is corrected automatically. The name card appears in the contact section
+next to a "Save Contact" button (a vCard built from CONFIG).
 
 ## SEO / sharing
 Title, description and Open Graph tags are in `<head>`. After hosting, fill in the
